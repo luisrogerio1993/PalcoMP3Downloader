@@ -9,30 +9,34 @@ package org.victortorres.palcomp3downloader;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
+import javax.swing.JOptionPane;
 
 /**
  *
- * @author Victor
+ * @author Victor (Revisão: Luís)
  */
+
 public class CapturarHTML {
     
     public String capturar(URL endereco) throws IOException {
-        URLConnection conexao = endereco.openConnection();
-        conexao.setRequestProperty( "User-agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.4 (KHTML, like Gecko) Chrome/22.0.1229.94 Safari/537.4" );
-        BufferedReader entrada = new BufferedReader(new InputStreamReader(conexao.getInputStream(), "UTF-8"));
         String linha;
         StringBuilder retorno = new StringBuilder();
-        while((linha = entrada.readLine()) != null) {
-            retorno.append(linha);
-        }
-        entrada.close();
-        
-        // Debug
-        // System.out.println(retorno.toString());
-        
-        return retorno.toString();
-    }
-    
+        try {  
+            URL url = new URL(""+endereco);  
+            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));  
+            
+            while ((linha = in.readLine()) != null) {  
+                retorno.append(linha);
+            }
+            
+            in.close();  
+        } catch (MalformedURLException e) {  
+            JOptionPane.showMessageDialog(null, "Erro: "+e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (IOException e) {  
+            JOptionPane.showMessageDialog(null, "Erro: "+e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        }        
+        return retorno.toString(); 
+    } 
 }

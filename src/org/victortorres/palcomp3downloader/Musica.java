@@ -6,24 +6,22 @@
 
 package org.victortorres.palcomp3downloader;
 
-import java.net.URL;
-
 /**
  *
- * @author Victor
+ * @author Victor (Revisão: Luís)
  */
+
 public class Musica {
     
     public String nome;
-    public URL url;
+    public String url;
     
     @Override
     public String toString() {
         return nome;
     }
     
-    public URL getURL() {
+    public String getURL() {
         return url;
     }
-    
 }

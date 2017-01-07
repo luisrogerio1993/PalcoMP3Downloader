@@ -6,10 +6,11 @@
 
 package org.victortorres.palcomp3downloader;
 
-import java.io.File;
+import java.awt.Color;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -20,15 +21,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.DefaultListModel;
 import javax.swing.JOptionPane;
-import static javax.swing.JOptionPane.ERROR_MESSAGE;
-import javax.swing.ListModel;
-import javax.swing.SwingWorker;
+import static java.lang.Thread.sleep;
 
 /**
  *
- * @author Victor
+ * @author Victor (Revisão: Luís)
  */
+
 public class JanelaPrincipal extends javax.swing.JFrame {
+    private boolean IDEstaOk = false;
+    private static boolean caminhoArquivoEstaOk = false; //está sendo usado
+    private static final Color corVerdeClaro = new Color(204, 255, 204);
+    private static final Color corVermelhoClaro = new Color(255, 204, 204);
+    private static boolean downloadEmAndamento=false;
+    private static String nomeMusicaBaixandoAtual = null;
+    //Para a listagem de musicas
+    private static List<String> listaDeURLs = new ArrayList<String>();
+    private static List<String> listaDeNomes = new ArrayList<String>();
+    private static DefaultListModel listaDeItensJlist = new DefaultListModel();
+    //Para stop do download
+    private static boolean pararDownload = false;
 
     /**
      * Creates new form JanelaPrincipal
@@ -47,26 +59,32 @@ public class JanelaPrincipal extends javax.swing.JFrame {
     private void initComponents() {
 
         selecionarLocal = new javax.swing.JFileChooser();
+        painelSuperior = new javax.swing.JPanel();
+        textoStatus = new javax.swing.JLabel();
         textoID = new javax.swing.JLabel();
-        IDArtista = new javax.swing.JTextField();
+        campoIDArtista = new javax.swing.JTextField();
+        botaoVerificar = new javax.swing.JButton();
+        botaoAjudaVerificar = new javax.swing.JButton();
         textoDestino = new javax.swing.JLabel();
-        localDasMusicas = new javax.swing.JTextField();
-        btnProcurar = new javax.swing.JButton();
-        btnVerificar = new javax.swing.JButton();
-        statusID = new javax.swing.JLabel();
-        btnListar = new javax.swing.JButton();
-        jScrollPane1 = new javax.swing.JScrollPane();
+        campoLocalDasMusicas = new javax.swing.JTextField();
+        botaoProcurar = new javax.swing.JButton();
+        progressBar = new javax.swing.JProgressBar();
+        painelOpcoes = new javax.swing.JPanel();
+        botaoListar = new javax.swing.JButton();
+        botaoMarcar = new javax.swing.JButton();
+        botaoDesmarcar = new javax.swing.JButton();
+        botaoDownload = new javax.swing.JButton();
+        painelListaMusicas = new javax.swing.JPanel();
+        scrollPane1 = new javax.swing.JScrollPane();
         listaDeMusicas = new javax.swing.JList();
-        btnMarcar = new javax.swing.JButton();
-        btnDesmarcar = new javax.swing.JButton();
-        btnDownload = new javax.swing.JButton();
-        itens = new javax.swing.JLabel();
-        itensb = new javax.swing.JLabel();
-        marcados = new javax.swing.JLabel();
-        restantes = new javax.swing.JLabel();
-        jLabel1 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
+        textoItensMarcados = new javax.swing.JLabel();
+        textoItensMarcadosNumero = new javax.swing.JLabel();
+        botaoPararDownload = new javax.swing.JButton();
+        menuBar = new javax.swing.JMenuBar();
+        menuArquivo = new javax.swing.JMenu();
+        subMenuSair = new javax.swing.JMenuItem();
+        menuAjuda = new javax.swing.JMenu();
+        subMenuSobre = new javax.swing.JMenuItem();
 
         selecionarLocal.setDialogType(javax.swing.JFileChooser.SAVE_DIALOG);
         selecionarLocal.setFileSelectionMode(javax.swing.JFileChooser.DIRECTORIES_ONLY);
@@ -77,382 +95,451 @@ public class JanelaPrincipal extends javax.swing.JFrame {
         });
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Palco MP3 Downloader");
+        setTitle("Palco MP3 Downloader 1.3");
         setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         setLocationByPlatform(true);
         setMaximumSize(new java.awt.Dimension(2147483647, 338));
         setMinimumSize(new java.awt.Dimension(456, 338));
         setResizable(false);
 
-        textoID.setText("ID do Palco MP3:");
+        textoStatus.setFont(new java.awt.Font("Tahoma", 2, 11)); // NOI18N
+        textoStatus.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        textoStatus.setText("...");
 
-        IDArtista.addActionListener(new java.awt.event.ActionListener() {
+        textoID.setText("1. ID do artista no  Palco MP3:");
+
+        campoIDArtista.addCaretListener(new javax.swing.event.CaretListener() {
+            public void caretUpdate(javax.swing.event.CaretEvent evt) {
+                campoIDArtistaCaretUpdate(evt);
+            }
+        });
+
+        botaoVerificar.setText("Verificar");
+        botaoVerificar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                IDArtistaActionPerformed(evt);
-            }
-        });
-        IDArtista.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
-            public void propertyChange(java.beans.PropertyChangeEvent evt) {
-                IDArtistaPropertyChange(evt);
-            }
-        });
-        IDArtista.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                IDArtistaKeyPressed(evt);
+                botaoVerificarActionPerformed(evt);
             }
         });
 
-        textoDestino.setText("Destino das músicas:");
-
-        localDasMusicas.addActionListener(new java.awt.event.ActionListener() {
+        botaoAjudaVerificar.setText("?");
+        botaoAjudaVerificar.setToolTipText("Ajuda");
+        botaoAjudaVerificar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                localDasMusicasActionPerformed(evt);
+                botaoAjudaVerificarActionPerformed(evt);
             }
         });
 
-        btnProcurar.setText("Procurar");
-        btnProcurar.addActionListener(new java.awt.event.ActionListener() {
+        textoDestino.setText("2. Destino das músicas:");
+        textoDestino.setEnabled(false);
+
+        campoLocalDasMusicas.setEditable(false);
+        campoLocalDasMusicas.setEnabled(false);
+
+        botaoProcurar.setText("Procurar");
+        botaoProcurar.setEnabled(false);
+        botaoProcurar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnProcurarActionPerformed(evt);
+                botaoProcurarActionPerformed(evt);
             }
         });
 
-        btnVerificar.setText("Verificar");
-        btnVerificar.addActionListener(new java.awt.event.ActionListener() {
+        progressBar.setStringPainted(true);
+
+        javax.swing.GroupLayout painelSuperiorLayout = new javax.swing.GroupLayout(painelSuperior);
+        painelSuperior.setLayout(painelSuperiorLayout);
+        painelSuperiorLayout.setHorizontalGroup(
+            painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelSuperiorLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(painelSuperiorLayout.createSequentialGroup()
+                        .addComponent(textoDestino)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(campoLocalDasMusicas, javax.swing.GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(botaoProcurar))
+                    .addGroup(painelSuperiorLayout.createSequentialGroup()
+                        .addComponent(textoID)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(campoIDArtista, javax.swing.GroupLayout.DEFAULT_SIZE, 166, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(botaoVerificar)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(botaoAjudaVerificar))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, painelSuperiorLayout.createSequentialGroup()
+                        .addComponent(progressBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(textoStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 205, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
+        );
+        painelSuperiorLayout.setVerticalGroup(
+            painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelSuperiorLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(textoStatus, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(textoID)
+                    .addComponent(campoIDArtista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(botaoVerificar)
+                    .addComponent(botaoAjudaVerificar))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(painelSuperiorLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(textoDestino)
+                    .addComponent(campoLocalDasMusicas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(botaoProcurar))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        painelOpcoes.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Opções", javax.swing.border.TitledBorder.CENTER, javax.swing.border.TitledBorder.TOP));
+
+        botaoListar.setText("Listar músicas");
+        botaoListar.setToolTipText("Listar todas as músicas do artista.");
+        botaoListar.setEnabled(false);
+        botaoListar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnVerificarActionPerformed(evt);
+                botaoListarActionPerformed(evt);
             }
         });
 
-        btnListar.setText("Listar músicas");
-        btnListar.addActionListener(new java.awt.event.ActionListener() {
+        botaoMarcar.setText("Marcar todas");
+        botaoMarcar.setToolTipText("Você também pode segurar Ctrl para multi-seleção. Ou usar Ctrl+A para selecionar todas.");
+        botaoMarcar.setEnabled(false);
+        botaoMarcar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnListarActionPerformed(evt);
+                botaoMarcarActionPerformed(evt);
             }
         });
 
+        botaoDesmarcar.setText("Desmarcar todas");
+        botaoDesmarcar.setToolTipText("Limpar seleções.");
+        botaoDesmarcar.setEnabled(false);
+        botaoDesmarcar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botaoDesmarcarActionPerformed(evt);
+            }
+        });
+
+        botaoDownload.setText("Download");
+        botaoDownload.setToolTipText("Iniciar download das músicas selecionadas.");
+        botaoDownload.setEnabled(false);
+        botaoDownload.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                botaoDownloadActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout painelOpcoesLayout = new javax.swing.GroupLayout(painelOpcoes);
+        painelOpcoes.setLayout(painelOpcoesLayout);
+        painelOpcoesLayout.setHorizontalGroup(
+            painelOpcoesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelOpcoesLayout.createSequentialGroup()
+                .addGap(5, 5, 5)
+                .addComponent(botaoListar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(botaoMarcar)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(botaoDesmarcar)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(botaoDownload)
+                .addGap(5, 5, 5))
+        );
+        painelOpcoesLayout.setVerticalGroup(
+            painelOpcoesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelOpcoesLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(painelOpcoesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(botaoListar)
+                    .addComponent(botaoMarcar)
+                    .addComponent(botaoDesmarcar)
+                    .addComponent(botaoDownload))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        painelListaMusicas.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Músicas", javax.swing.border.TitledBorder.CENTER, javax.swing.border.TitledBorder.TOP));
+
+        listaDeMusicas.setSelectionBackground(new java.awt.Color(204, 255, 204));
         listaDeMusicas.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
             public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
                 listaDeMusicasValueChanged(evt);
             }
         });
-        jScrollPane1.setViewportView(listaDeMusicas);
+        scrollPane1.setViewportView(listaDeMusicas);
 
-        btnMarcar.setText("Marcar todas");
-        btnMarcar.addActionListener(new java.awt.event.ActionListener() {
+        textoItensMarcados.setText("Itens Marcados:");
+
+        textoItensMarcadosNumero.setFont(new java.awt.Font("Arial Black", 1, 11)); // NOI18N
+        textoItensMarcadosNumero.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        textoItensMarcadosNumero.setText("0");
+
+        botaoPararDownload.setText("Parar Downloads");
+        botaoPararDownload.setEnabled(false);
+        botaoPararDownload.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnMarcarActionPerformed(evt);
+                botaoPararDownloadActionPerformed(evt);
             }
         });
 
-        btnDesmarcar.setText("Desmarcar todas");
-        btnDesmarcar.addActionListener(new java.awt.event.ActionListener() {
+        javax.swing.GroupLayout painelListaMusicasLayout = new javax.swing.GroupLayout(painelListaMusicas);
+        painelListaMusicas.setLayout(painelListaMusicasLayout);
+        painelListaMusicasLayout.setHorizontalGroup(
+            painelListaMusicasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelListaMusicasLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(painelListaMusicasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(scrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 424, Short.MAX_VALUE)
+                    .addGroup(painelListaMusicasLayout.createSequentialGroup()
+                        .addComponent(textoItensMarcados)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(textoItensMarcadosNumero)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(botaoPararDownload)))
+                .addContainerGap())
+        );
+        painelListaMusicasLayout.setVerticalGroup(
+            painelListaMusicasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(painelListaMusicasLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(scrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 164, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(2, 2, 2)
+                .addGroup(painelListaMusicasLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(textoItensMarcados)
+                    .addComponent(textoItensMarcadosNumero)
+                    .addComponent(botaoPararDownload))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        menuArquivo.setText("Arquivo");
+
+        subMenuSair.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F4, java.awt.event.InputEvent.ALT_MASK));
+        subMenuSair.setText("Sair");
+        subMenuSair.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnDesmarcarActionPerformed(evt);
+                subMenuSairActionPerformed(evt);
             }
         });
+        menuArquivo.add(subMenuSair);
 
-        btnDownload.setText("Download");
-        btnDownload.addActionListener(new java.awt.event.ActionListener() {
+        menuBar.add(menuArquivo);
+
+        menuAjuda.setText("Ajuda");
+
+        subMenuSobre.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, 0));
+        subMenuSobre.setText("Sobre");
+        subMenuSobre.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnDownloadActionPerformed(evt);
+                subMenuSobreActionPerformed(evt);
             }
         });
+        menuAjuda.add(subMenuSobre);
 
-        itens.setText("Itens marcados:");
+        menuBar.add(menuAjuda);
 
-        itensb.setText("Itens restantes:");
-
-        marcados.setText("0");
-
-        restantes.setText("0");
-
-        jLabel1.setText("Palco MP3 Downloader - versão 1.2");
-
-        jLabel3.setText("http://github.com/victor-torres/PalcoMP3Downloader");
-
-        jLabel4.setText("GRATUITO");
+        setJMenuBar(menuBar);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(itens)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(marcados)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(itensb)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(restantes)
-                        .addGap(99, 99, 99))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(textoDestino)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(localDasMusicas)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(btnProcurar))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel4))
-                    .addComponent(jScrollPane1)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel3)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(textoID)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(IDArtista, javax.swing.GroupLayout.PREFERRED_SIZE, 115, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnVerificar)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(statusID))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(btnListar)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnMarcar)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnDesmarcar)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(btnDownload)))
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
+            .addComponent(painelSuperior, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(painelOpcoes, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(painelListaMusicas, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel4))
+                .addComponent(painelSuperior, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel3)
+                .addComponent(painelOpcoes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(textoID)
-                    .addComponent(IDArtista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnVerificar)
-                    .addComponent(statusID))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(textoDestino)
-                    .addComponent(localDasMusicas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnProcurar))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnListar)
-                    .addComponent(btnMarcar)
-                    .addComponent(btnDesmarcar)
-                    .addComponent(btnDownload))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 164, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(itens)
-                    .addComponent(itensb)
-                    .addComponent(marcados)
-                    .addComponent(restantes))
-                .addContainerGap())
+                .addComponent(painelListaMusicas, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         pack();
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
-    private void IDArtistaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IDArtistaActionPerformed
-        // TODO add your handling code here:
-        btnVerificar.doClick();
-    }//GEN-LAST:event_IDArtistaActionPerformed
-
-    private void localDasMusicasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_localDasMusicasActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_localDasMusicasActionPerformed
-
-    private void btnProcurarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnProcurarActionPerformed
-        // TODO add your handling code here:
+    private void botaoProcurarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoProcurarActionPerformed
         selecionarLocal.showDialog(this, null);
-    }//GEN-LAST:event_btnProcurarActionPerformed
+        if(campoLocalDasMusicas.getText().equals("")){
+            ativarEDesativarMenuOpcoes(false, false); //segundo false indica que não é durante um download
+        }else{
+            ativarEDesativarMenuOpcoes(true, false);
+        }
+    }//GEN-LAST:event_botaoProcurarActionPerformed
 
     private void selecionarLocalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selecionarLocalActionPerformed
-        // TODO add your handling code here:
         try {
-            localDasMusicas.setText(selecionarLocal.getSelectedFile().toString());
+            campoLocalDasMusicas.setText(selecionarLocal.getSelectedFile().toString());
         } catch(NullPointerException e) {
-            localDasMusicas.setText("");
+            campoLocalDasMusicas.setText("");
+            JOptionPane.showMessageDialog(null, "Erro: "+e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_selecionarLocalActionPerformed
 
-    private void btnVerificarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnVerificarActionPerformed
-        // TODO add your handling code here:
-        CapturarHTML html = new CapturarHTML();
+    private void botaoVerificarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoVerificarActionPerformed
         Endereco endereco = null;
         try {
-            endereco = new Endereco(IDArtista.getText());
+            if (campoIDArtista.getText().equals("")){
+                JOptionPane.showMessageDialog(null, "Campo ID está vazio.", "Erro", JOptionPane.ERROR_MESSAGE);
+                return;
+            }else{
+                endereco = new Endereco(campoIDArtista.getText().trim());
+            }
         } catch (MalformedURLException ex) {
-            statusID.setText("ID incorreto.");
+            ativarEDesativarMenuProcurar(false);
+            JOptionPane.showMessageDialog(null, "ID incorreto.\nErro: "+ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
         }
-        String resultado = null;
-        try {
-            resultado = html.capturar(endereco.getURL());
-        } catch (IOException ex) {
-            statusID.setText("ID não encontrado.");
-            Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        //System.out.print(resultado);
-        if(resultado.contains("data-arquivo")) {
-            statusID.setText("ID encontrado.");
-        } else {
-            statusID.setText("ID não encontrado.");
-        }
-    }//GEN-LAST:event_btnVerificarActionPerformed
-
-    private void IDArtistaPropertyChange(java.beans.PropertyChangeEvent evt) {//GEN-FIRST:event_IDArtistaPropertyChange
-        // TODO add your handling code here:
-    }//GEN-LAST:event_IDArtistaPropertyChange
-
-    private void IDArtistaKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_IDArtistaKeyPressed
-        // TODO add your handling code here:
-        statusID.setText("");
-    }//GEN-LAST:event_IDArtistaKeyPressed
-
-    private void btnListarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnListarActionPerformed
-        // TODO add your handling code here:
-        listaDeMusicas.removeAll();
         
         CapturarHTML html = new CapturarHTML();
-        Endereco endereco = null;
-        String resultado = null;
-        
+        String enderecoCompleto = null;
         try {
-            endereco = new Endereco(IDArtista.getText());
-        } catch (MalformedURLException ex) {
-            statusID.setText("ID incorreto.");
+            enderecoCompleto = html.capturar(endereco.getEndereco());
+        } catch (IOException ex) {
+            ativarEDesativarMenuProcurar(false);
+            JOptionPane.showMessageDialog(null, "ID não encontrado.", "Erro", JOptionPane.ERROR_MESSAGE);
             Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        if(enderecoCompleto.contains("data-arquivo")) {
+            Matcher matcherNomeArtits = Pattern.compile("<h2 class=\"titulo\"><a href=\"/"+campoIDArtista.getText().toLowerCase().trim()+"/\">(.*?)<").matcher(enderecoCompleto);
+            matcherNomeArtits.matches();
+
+            while(matcherNomeArtits.find()) {
+                String NomeDoArtista = matcherNomeArtits.group(0);
+                NomeDoArtista = NomeDoArtista.substring(NomeDoArtista.lastIndexOf(">")+1, NomeDoArtista.lastIndexOf("<"));
+                NomeDoArtista = trocarCaracteresUnicodeUTF8(NomeDoArtista);
+                ativarEDesativarMenuProcurar(true);
+                if (!campoLocalDasMusicas.getText().trim().equals(""))ativarEDesativarMenuOpcoes(true, false); //segundo false indica que não é durante um download
+                JOptionPane.showMessageDialog(null, "Artista: "+NomeDoArtista+", encontrado.", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+        } else {
+            ativarEDesativarMenuProcurar(false);
+            JOptionPane.showMessageDialog(null, "Artista com ID: "+campoIDArtista.getText().trim()+" não encontrado.\n\nReveja o ID e tente novamente.", "Erro", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_botaoVerificarActionPerformed
+
+    private void botaoListarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoListarActionPerformed
+        listaDeItensJlist.clear();
+        listaDeNomes.clear();
+        listaDeURLs.clear();
+        CapturarHTML html = new CapturarHTML();
+        Endereco endereco = null;
+        String resultadoHTML = null;
         
         try {
-            resultado = html.capturar(endereco.getURL());
+            endereco = new Endereco(campoIDArtista.getText().toLowerCase().trim());
+            resultadoHTML = html.capturar(endereco.getEndereco());
+        } catch (MalformedURLException ex) {
+            JOptionPane.showMessageDialog(null, "ID incorreto.", "Erro", JOptionPane.ERROR_MESSAGE);
+            Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        if(!resultado.contains("data-arquivo")) {
-            
-            DefaultListModel lista = new DefaultListModel();
-            lista.addElement("Falha ao capturar lista de músicas. ID não encontrado.");
-            listaDeMusicas.setModel(lista);
-            
-        } else {
-            
-            List<String> listaDeURLs = new ArrayList<String>();
-            List<String> listaDeNomes = new ArrayList<String>();
-            
-            Matcher m = Pattern.compile("<a href=\"(\\w+://[\\w|.|/|-]+.mp3)\\?\" class=\"download\"( target=\"_blank\")* download=\"(.*?)\\.mp3\">baixar</a>").matcher(resultado);
-            m.matches();
-            while(m.find()) {
-                listaDeURLs.add(m.group(1));
-                listaDeNomes.add(m.group(3));
-            }
-            
-            // Caso não consiga encontrar pelo método padrão, tenta o método alternativo
-            if(listaDeURLs.size() == 0 || listaDeNomes.size() == 0) {
-                listaDeURLs = new ArrayList<String>();
-                listaDeNomes = new ArrayList<String>();
-                
-                m = Pattern.compile("(\\w+://[\\w|.|/|-]+.mp3)\\?\" class=\"download\"").matcher(resultado);
-                m.matches();
-                while(m.find()) {
-                    listaDeURLs.add(m.group(0));
-                }
-                
-                m = Pattern.compile("class=\"lista_nome\" itemprop=\"name\">(.*?)</a>").matcher(resultado);
-                m.matches();
-                while(m.find()) {
-                    listaDeNomes.add(m.group(1));
-                }
-            }
-            
-            DefaultListModel lista = new DefaultListModel();
-            for(int i = 0; i < listaDeURLs.size(); i++) {
-                Musica musica = new Musica();
-                musica.nome = listaDeNomes.get(i);
-                try {
-                    musica.url = new URL(listaDeURLs.get(i));
-                } catch (MalformedURLException ex) {
-                    Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                lista.addElement(musica);
-            }
-            
-            listaDeMusicas.setModel(lista);
-            
-        }
-        
-    }//GEN-LAST:event_btnListarActionPerformed
 
-    private void btnMarcarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMarcarActionPerformed
-        // TODO add your handling code here:
+        
+        if(!resultadoHTML.contains("data-arquivo")) {
+            JOptionPane.showMessageDialog(null, "Falha ao capturar lista de músicas. ID não encontrado.", "Erro", JOptionPane.ERROR_MESSAGE);
+        } else {
+            try {
+                //Pegar URLS
+                Matcher mURLS = Pattern.compile("data-url_mp3=\"(.*?)\"").matcher(resultadoHTML);
+                mURLS.matches();
+                while(mURLS.find()) {
+                    String resultadoURL = mURLS.group(0).substring(mURLS.group(0).indexOf("/")+2, mURLS.group(0).lastIndexOf("\""));
+                    listaDeURLs.add("http://"+resultadoURL);
+                }
+                //PegarNomes
+                Matcher mNomes = Pattern.compile("<a class=\"link\" href=\"(.+?)</").matcher(resultadoHTML);
+                mNomes.matches();
+                while(mNomes.find()) {
+                    String resultadoNome = mNomes.group(0).substring(mNomes.group(0).lastIndexOf(">")+1, mNomes.group(0).lastIndexOf("<"));
+                    resultadoNome = trocarCaracteresUnicodeUTF8(resultadoNome);
+                    listaDeNomes.add(resultadoNome);
+                }
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "Erro ao capturar URL: "+e.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            }
+            try {
+                for(int i = 0; i < listaDeURLs.size(); i++) {
+                    Musica todasAsMusicas = new Musica();
+                    todasAsMusicas.nome = "[_] "+listaDeNomes.get(i);
+                    todasAsMusicas.url =  listaDeURLs.get(i);
+
+                    listaDeItensJlist.addElement(todasAsMusicas);
+                }
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "O artista tem uma quantidade muito grande de músicas.\nCaso tenha algum problema, por favor tente novamente.\n\nErro: "+e.getMessage(), "Atenção", JOptionPane.WARNING_MESSAGE);
+            }
+            listaDeMusicas.setModel(listaDeItensJlist);
+
+            listaDeMusicas.setBackground(Color.WHITE);
+        }
+    }//GEN-LAST:event_botaoListarActionPerformed
+
+    private void botaoMarcarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoMarcarActionPerformed
         listaDeMusicas.setSelectionInterval(0, listaDeMusicas.getModel().getSize() - 1);
-    }//GEN-LAST:event_btnMarcarActionPerformed
+    }//GEN-LAST:event_botaoMarcarActionPerformed
 
-    private void btnDesmarcarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDesmarcarActionPerformed
-        // TODO add your handling code here:
+    private void botaoDesmarcarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoDesmarcarActionPerformed
         listaDeMusicas.clearSelection();
-    }//GEN-LAST:event_btnDesmarcarActionPerformed
+    }//GEN-LAST:event_botaoDesmarcarActionPerformed
 
-    private void btnDownloadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDownloadActionPerformed
-        // TODO add your handling code here:
-        if(localDasMusicas.getText().equals("")) {
-            statusID.setText("Selecione um destino.");
-        }
-        else if(Integer.parseInt(restantes.getText()) == 0) {
-            ListModel elementos = listaDeMusicas.getModel();
-            int[] indices = listaDeMusicas.getSelectedIndices();
-            if(indices.length > 0) {
-                statusID.setText("Download iniciado.");
-                marcados.setText(String.valueOf(indices.length));
-                restantes.setText(String.valueOf(indices.length));
-                //System.out.println(indices.length);
-                for(int i : indices) {
-                    Object obj = listaDeMusicas.getModel().getElementAt(i);
-                    final Musica musica = (Musica) obj;
-                    final URL url = musica.url;
-                    musica.nome = musica.nome.replaceAll("[\\/:*?\"|]", "");
-                    SwingWorker sw = new SwingWorker() {
-                        @Override
-                        protected Object doInBackground() throws Exception {
-                        try {
-                            org.apache.commons.io.FileUtils.copyURLToFile(url, new File(localDasMusicas.getText() + "\\" + musica.nome + ".mp3"));
-                        } catch (IOException ex) {
-                            //statusID.setText("Falha em " + musica.nome);
-                            JOptionPane.showMessageDialog(null, "Falha ao tentar baixar \"" + musica.nome + "\"", "Falha no download", ERROR_MESSAGE);
-                            Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                        restantes.setText(String.valueOf(Integer.parseInt(restantes.getText()) - 1));
-                        if(Integer.parseInt(restantes.getText()) == 0) {
-                            statusID.setText("Download concluído.");
-                        }
-                            return null;
-                        }
-                    };
-                    sw.execute();
-                }
-            } else {
-                statusID.setText("Nada selecionado.");
-            }
-        } else {
-            statusID.setText("Download em execução.");
-        }
-    }//GEN-LAST:event_btnDownloadActionPerformed
+    private void botaoDownloadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoDownloadActionPerformed
+        downloadEmAndamento=true;
+        textoStatus.setText("");
+        Thread thread = new ThreadInicarDownload(); 
+        thread.start();
+    }//GEN-LAST:event_botaoDownloadActionPerformed
 
     private void listaDeMusicasValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_listaDeMusicasValueChanged
-        // TODO add your handling code here:
-        marcados.setText(String.valueOf(listaDeMusicas.getSelectedIndices().length));
+        textoItensMarcadosNumero.setText(String.valueOf(listaDeMusicas.getSelectedIndices().length));
+        progressBar.setMaximum(listaDeMusicas.getSelectedIndices().length);
+        if(progressBar.getValue()!=0) progressBar.setValue(0);
+        
+        if (listaDeMusicas.getSelectedIndices().length > 0) {
+            botaoDownload.setEnabled(true);
+        }else{
+            botaoDownload.setEnabled(false);
+        }
     }//GEN-LAST:event_listaDeMusicasValueChanged
+
+    private void subMenuSobreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subMenuSobreActionPerformed
+        JOptionPane.showMessageDialog(null, "Palco MP3 Downloader - Versão: 1.3 ------ Licença: GRATUITO\n\n\nDesenvolvedor principal:\n* Victor Torres\n\nContibuintes:\n* Luís Araújo (Interface mais amigável e correção de bugs)\n* Lucas Limeira (atualização para a nova versão do Palco MP3)\n* Rubem Kalebe (ajuda na resolução do erro ao listar mais de 100 músicas)\n\n\nProjeto GitHub: http://github.com/victor-torres/PalcoMP3Downloader\nTodo o programa está sob licença Creative Commons.", "Sobre", JOptionPane.INFORMATION_MESSAGE);
+    }//GEN-LAST:event_subMenuSobreActionPerformed
+
+    private void botaoAjudaVerificarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoAjudaVerificarActionPerformed
+        JOptionPane.showMessageDialog(null, "O ID do artista é o nome que aparece no final do\nendereço do site quando você está na página do artista.\nÉ o \"username\" dele, apelido, etc...\n\nExemplo: https://www.palcomp3.com/artista123oficial/\nOnde \"artista123oficial\" é o ID.\n\nPra preceguir você deve digitar um ID existente\ne selecionar a pasta de destino das músicas.", "Ajuda", JOptionPane.QUESTION_MESSAGE);
+    }//GEN-LAST:event_botaoAjudaVerificarActionPerformed
+
+    private void campoIDArtistaCaretUpdate(javax.swing.event.CaretEvent evt) {//GEN-FIRST:event_campoIDArtistaCaretUpdate
+        if (IDEstaOk==false)return;
+        
+        int resposta = JOptionPane.showConfirmDialog(null, "Deseja mudar de artista?", "Alterar ID?", JOptionPane.YES_NO_OPTION);
+        if(resposta==JOptionPane.YES_OPTION && IDEstaOk==true){
+            listaDeItensJlist.clear();
+            ativarEDesativarMenuProcurar(false);
+        }
+    }//GEN-LAST:event_campoIDArtistaCaretUpdate
+
+    private void botaoPararDownloadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botaoPararDownloadActionPerformed
+        if (downloadEmAndamento==true){
+            int resultado = JOptionPane.showConfirmDialog(null, "Tem certeza que deseja parar o(s) download(s)?", "Cancelar Download(s)", JOptionPane.YES_NO_OPTION);
+            if (resultado==JOptionPane.YES_OPTION){
+                pararDownload=true;
+            }
+        }else{
+            JOptionPane.showMessageDialog(null, "Nenhum Download em andamento.", "Cancelar Download(s)", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }//GEN-LAST:event_botaoPararDownloadActionPerformed
+
+    private void subMenuSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subMenuSairActionPerformed
+        dispose();
+    }//GEN-LAST:event_subMenuSairActionPerformed
 
     /**
      * @param args the command line arguments
@@ -470,19 +557,16 @@ public class JanelaPrincipal extends javax.swing.JFrame {
                     break;
                 }
             }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(JanelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(JanelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(JanelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(JanelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
+        //</editor-fold>
+        
         //</editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new JanelaPrincipal().setVisible(true);
             }
@@ -490,26 +574,219 @@ public class JanelaPrincipal extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JTextField IDArtista;
-    private javax.swing.JButton btnDesmarcar;
-    private javax.swing.JButton btnDownload;
-    private javax.swing.JButton btnListar;
-    private javax.swing.JButton btnMarcar;
-    private javax.swing.JButton btnProcurar;
-    private javax.swing.JButton btnVerificar;
-    private javax.swing.JLabel itens;
-    private javax.swing.JLabel itensb;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JList listaDeMusicas;
-    private javax.swing.JTextField localDasMusicas;
-    private javax.swing.JLabel marcados;
-    private javax.swing.JLabel restantes;
+    private javax.swing.JButton botaoAjudaVerificar;
+    private static javax.swing.JButton botaoDesmarcar;
+    private static javax.swing.JButton botaoDownload;
+    private static javax.swing.JButton botaoListar;
+    private static javax.swing.JButton botaoMarcar;
+    private static javax.swing.JButton botaoPararDownload;
+    private javax.swing.JButton botaoProcurar;
+    private javax.swing.JButton botaoVerificar;
+    private static javax.swing.JTextField campoIDArtista;
+    private static javax.swing.JTextField campoLocalDasMusicas;
+    private static javax.swing.JList listaDeMusicas;
+    private javax.swing.JMenu menuAjuda;
+    private javax.swing.JMenu menuArquivo;
+    private javax.swing.JMenuBar menuBar;
+    private javax.swing.JPanel painelListaMusicas;
+    private javax.swing.JPanel painelOpcoes;
+    private javax.swing.JPanel painelSuperior;
+    private static javax.swing.JProgressBar progressBar;
+    private javax.swing.JScrollPane scrollPane1;
     private javax.swing.JFileChooser selecionarLocal;
-    private javax.swing.JLabel statusID;
+    private javax.swing.JMenuItem subMenuSair;
+    private javax.swing.JMenuItem subMenuSobre;
     private javax.swing.JLabel textoDestino;
     private javax.swing.JLabel textoID;
+    private javax.swing.JLabel textoItensMarcados;
+    private static javax.swing.JLabel textoItensMarcadosNumero;
+    private static javax.swing.JLabel textoStatus;
     // End of variables declaration//GEN-END:variables
+
+    private void ativarEDesativarMenuProcurar(boolean isAtivar) {
+        if (isAtivar==true){
+            IDEstaOk=true;
+            textoDestino.setEnabled(true);
+            campoLocalDasMusicas.setEnabled(true);
+            botaoProcurar.setEnabled(true);
+            campoIDArtista.setBackground(corVerdeClaro);
+            
+        }else{
+            IDEstaOk=false;
+            textoDestino.setEnabled(false);
+            campoLocalDasMusicas.setEnabled(false);
+            botaoProcurar.setEnabled(false);
+            campoIDArtista.setBackground(corVermelhoClaro);
+            ativarEDesativarMenuOpcoes(false, false); //segundo false indica que não é durante um download
+        }
+        
+    }
+    
+    private static void ativarEDesativarMenuOpcoes(boolean isAtivar, boolean duranteODownload) {
+        if (isAtivar==true){
+            caminhoArquivoEstaOk=true;
+            botaoListar.setEnabled(true);
+            botaoMarcar.setEnabled(true);
+            botaoDesmarcar.setEnabled(true);
+            if (duranteODownload==false) {
+                campoLocalDasMusicas.setBackground(corVerdeClaro);
+            }else{
+                listaDeMusicas.setEnabled(true);
+                botaoPararDownload.setEnabled(false);
+            }
+            
+        }else{
+            caminhoArquivoEstaOk=false;
+            botaoListar.setEnabled(false);
+            botaoMarcar.setEnabled(false);
+            botaoDesmarcar.setEnabled(false);
+            botaoDownload.setEnabled(false);
+            if (duranteODownload==false) {
+                campoLocalDasMusicas.setBackground(corVermelhoClaro);
+            }else{
+                listaDeMusicas.setEnabled(false);
+                botaoPararDownload.setEnabled(true);
+            }
+        }
+    }
+
+    
+private static class ThreadInicarDownload extends Thread {
+
+    @Override
+    public void run() {
+        try {
+            int[] indices = listaDeMusicas.getSelectedIndices();
+            if(indices.length > 0) {
+            //textoItensMarcadosNumero.setText(String.valueOf(indices.length));
+            progressBar.setValue(0);
+            int valueProgressiveBar=progressBar.getValue();
+            Thread thread = new ThreadNomeMusicaBaixando(); 
+            thread.start();
+            
+            for(int i : indices) {
+                try{
+                    FileOutputStream fos = null;
+                    Object obj = listaDeMusicas.getModel().getElementAt(i);
+                    final Musica musica = (Musica)obj;
+                    nomeMusicaBaixandoAtual = musica.nome;
+                    ativarEDesativarMenuOpcoes(false, true);//segundo false indica que é durante um download
+
+                    try{
+                        URL url = new URL(""+musica.url);
+                        String destino = campoLocalDasMusicas.getText().trim()+"\\"+musica.nome.substring(4)+".mp3";
+                        try (InputStream is = url.openStream()) {
+                            fos = new FileOutputStream(destino);
+                            int bytes = 0;
+                            while ((bytes = is.read()) != -1 && pararDownload==false) {
+                                fos.write(bytes);
+                            }
+                            if (pararDownload==true){ //parar todos os precessos de download e 'not enable'
+                                ativarEDesativarMenuOpcoes(true, true);
+                                downloadEmAndamento=false;
+                                pararDownload=false;
+                                textoStatus.setText("Cancelado!");
+                                return;
+                            }
+                        }
+                        fos.close();
+                        progressBar.setValue(++valueProgressiveBar);
+                    } catch(FileNotFoundException ex){
+                        JOptionPane.showMessageDialog(null, "Falha ao baixar musica: "+musica.nome+"", "Erro no Download", JOptionPane.ERROR_MESSAGE);
+                        Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (MalformedURLException ex) {
+                        Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (IOException ex) {
+                        Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    sleep(1000);
+                    } catch(InterruptedException ex){
+                        Logger.getLogger(JanelaPrincipal.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+            }
+            //check na musica baixada
+            marcarMusicasConcluidas();
+            ativarEDesativarMenuOpcoes(true, true);//segundo false indica que é durante um download
+            downloadEmAndamento=false;
+            }
+        }catch(Exception e){
+            Logger.getLogger(e.getMessage());
+        }
+    }
 }
+
+private static class ThreadNomeMusicaBaixando extends Thread {
+
+    @Override
+    public void run() {
+        try{
+            while (downloadEmAndamento==true) {
+                if (!textoStatus.getText().trim().equals("Cancelado!")) textoStatus.setText(".   Baixando: "+nomeMusicaBaixandoAtual.substring(4));
+                sleep(500);
+                if (!textoStatus.getText().trim().equals("Cancelado!")) textoStatus.setText("..  Baixando: "+nomeMusicaBaixandoAtual.substring(4));
+                sleep(500);
+                if (!textoStatus.getText().trim().equals("Cancelado!")) textoStatus.setText("... Baixando: "+nomeMusicaBaixandoAtual.substring(4));
+                sleep(500);
+            }
+            if (!textoStatus.getText().trim().equals("Cancelado!")){
+                textoStatus.setText("Concluido!");
+            }
+        } catch (Exception e) {
+            Logger.getLogger(e.getMessage());
+        }
+    }
+}
+
+    private static void marcarMusicasConcluidas(){
+        int[] IndicesDosItensSelecionados = listaDeMusicas.getSelectedIndices();
+            for (int j = 0; j < listaDeMusicas.getSelectedIndices().length; j++) {
+                Musica musica = (Musica) listaDeItensJlist.getElementAt(IndicesDosItensSelecionados[j]);
+                String nomeDaMusica = musica.nome.substring(3);
+                listaDeItensJlist.setElementAt("[✓]"+nomeDaMusica, IndicesDosItensSelecionados[j]);
+
+            }
+        listaDeMusicas.setModel(listaDeItensJlist);
+        //Corrigir falha ao deixar a barra de progresso em 100% apois cuncluido
+        progressBar.setMaximum(100);
+        progressBar.setValue(100);
+        //Reiniciar Graphics
+        listaDeMusicas.setVisible(false);
+        listaDeMusicas.repaint();
+        listaDeMusicas.setVisible(true);
+    }
+    
+    private String trocarCaracteresUnicodeUTF8(String stringRecebida){
+        //Solução temporária, mesmo com cadeiras de caracteres pequenas, o processamento é custoso
+        //Correção em letras minusculas, apenas
+        String stringPronta = stringRecebida;
+        
+        stringPronta = stringPronta.replaceAll("(Ã¡|aÌ�)", "á");
+        stringPronta = stringPronta.replaceAll("Ã", "à");
+        stringPronta = stringPronta.replaceAll("(Ã¢|à¢|ã¢)", "â");
+        stringPronta = stringPronta.replaceAll("(Ã£|à£|ã£|aÌƒ)", "ã");
+        stringPronta = stringPronta.replaceAll("(Ã©|à©|ã©|à‰|eÌ�)", "é");
+        stringPronta = stringPronta.replaceAll("(Ã¨|à¨|ã¨)", "è");
+        stringPronta = stringPronta.replaceAll("(Ãª|àª|ãª|eÌ‚)", "ê");
+        stringPronta = stringPronta.replaceAll("(Ã­|à­|ã­|iÌ�)", "í");
+        stringPronta = stringPronta.replaceAll("(Ã¬|à¬|ã¬)", "ì");
+        stringPronta = stringPronta.replaceAll("(Ã®|à®|ã®)", "î");
+        stringPronta = stringPronta.replaceAll("(Ã³|à³|ã³)", "ó");
+        stringPronta = stringPronta.replaceAll("(Ã²|à²|ã²)", "ò");
+        stringPronta = stringPronta.replaceAll("(Ã´|à´|ã´)", "ô");
+        stringPronta = stringPronta.replaceAll("(Ãµ|àµ|ãµ)", "õ");
+        stringPronta = stringPronta.replaceAll("(Ãº|àº|ãº)", "ú");
+        stringPronta = stringPronta.replaceAll("(Ã¹|à¹|ã¹)", "ù");
+        stringPronta = stringPronta.replaceAll("(Ã»|à»|ã»)", "û");
+        
+        stringPronta = stringPronta.replaceAll("Ã§|à§|cÌ§|ã§", "ç");
+        stringPronta = stringPronta.replaceAll("(&#039;|&#39;|Â´)", "'");
+        stringPronta = stringPronta.replaceAll("&quot;", "\"");
+        stringPronta = stringPronta.replaceAll("&lt;", "<");
+        stringPronta = stringPronta.replaceAll("&gt;", ">");
+        stringPronta = stringPronta.replaceAll("&amp;", "&");
+        
+        return stringPronta;
+    }
+}
+    
+
